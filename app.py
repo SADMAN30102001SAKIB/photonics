@@ -18,14 +18,14 @@ class Tool:
 
 TOOLS = [
     Tool(
-        "Peak-Aligned PCA-GPR",
-        Path("models/peak_aligned_pca_gpr.py"),
-        "Best selected ML model with peak alignment, PCA, and GPR.",
-    ),
-    Tool(
         "GPR",
         Path("models/gpr.py"),
         "Direct Gaussian Process Regression on the full curve.",
+    ),
+    Tool(
+        "Peak-Aligned GPR",
+        Path("models/peak_aligned_gpr.py"),
+        "Peak alignment with direct GPR shape prediction.",
     ),
     Tool(
         "PCA-GPR",
@@ -33,9 +33,9 @@ TOOLS = [
         "PCA curve compression with GPR coefficient prediction.",
     ),
     Tool(
-        "Peak-Aligned GPR",
-        Path("models/peak_aligned_gpr.py"),
-        "Peak alignment with direct GPR shape prediction.",
+        "Peak-Aligned PCA-GPR",
+        Path("models/peak_aligned_pca_gpr.py"),
+        "Best selected ML model with peak alignment, PCA, and GPR.",
     ),
     Tool(
         "PCHIP Interpolation",
