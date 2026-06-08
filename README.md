@@ -58,7 +58,7 @@ This is a hybrid machine-learning surrogate model:
 1. Detect the resonance peak of each training curve.
 2. Shift each curve so the peak is centered.
 3. Normalize the peak height.
-4. Use PCA to compress the aligned curve shape into 6 components.
+4. Use PCA to compress the aligned curve shape into 4 components.
 5. Use Gaussian Process Regression to predict:
    - peak wavelength
    - peak confinement loss
@@ -72,21 +72,21 @@ After correcting testing samples 3 and 4, the selected model achieved:
 
 ```text
 Model: Peak-Aligned PCA + Gaussian Process Regression
-PCA components: 6
-Explained variance: 99.896312%
+PCA components: 4
+Explained variance: 97.956825%
 
-Overall R2:   0.9685276618
-Overall MAE:  0.004999844199
-Overall RMSE: 0.009931123352
+Overall R2:   0.9822113145
+Overall MAE:  0.003045989555
+Overall RMSE: 0.007466306258
 ```
 
 Per-sample R2:
 
 ```text
-RI 1.3650  R2 = 0.97606727
-RI 1.3833  R2 = 0.99195244
-RI 1.3880  R2 = 0.95369281
-RI 1.3921  R2 = 0.96578994
+RI 1.3650  R2 = 0.98747524
+RI 1.3833  R2 = 0.99153713
+RI 1.3880  R2 = 0.96899022
+RI 1.3921  R2 = 0.98519132
 ```
 
 ## Why Peak Alignment Matters
@@ -114,7 +114,7 @@ This makes the prediction more physically meaningful and improves the model's ab
 ### Main ML Models
 
 ```text
-models/direct_gpr.py
+models/gpr.py
 ```
 
 Direct Gaussian Process Regression model.
@@ -137,28 +137,28 @@ models/peak_aligned_pca_gpr.py
 
 Peak alignment with PCA shape compression and GPR prediction. This is the main selected ML model.
 
-### Numerical / Baseline Models
+### Interpolation Models
 
 ```text
-baselines/spline_interpolation.py
+interpolation/spline_interpolation.py
 ```
 
-Natural cubic spline interpolation baseline.
+Natural cubic spline interpolation model.
 
 ```text
-baselines/pchip_interpolation.py
+interpolation/pchip_interpolation.py
 ```
 
-PCHIP interpolation baseline.
+PCHIP interpolation model.
 
 ```text
-baselines/peak_aligned_surrogate.py
+interpolation/peak_aligned_surrogate.py
 ```
 
-Peak-aligned local interpolation surrogate baseline.
+Peak-aligned local interpolation surrogate.
 
 ```text
-baselines/width_aligned_peak_surrogate.py
+interpolation/width_aligned_peak_surrogate.py
 ```
 
 Experimental width-aligned peak surrogate with data audit.
@@ -187,6 +187,54 @@ Dependencies are defined in:
 pyproject.toml
 ```
 
+## How To Use The App
+
+This project is a script-based research app. You run one Python file at a time, and each script prints metrics and opens plots.
+
+1. Install dependencies:
+
+```powershell
+uv sync
+```
+
+2. Run the selected best model:
+
+```powershell
+uv run models/peak_aligned_pca_gpr.py
+```
+
+3. Read the terminal output:
+
+```text
+R2, MAE, RMSE, per-RI accuracy, peak wavelength error, and peak loss error
+```
+
+4. View the plot window:
+
+```text
+solid line = actual testing curve
+dashed line = predicted testing curve
+```
+
+The CSV files in `dataset/` are loaded automatically. No manual file selection is needed.
+
+## What Is `photonics/core.py`?
+
+`photonics/core.py` is the shared helper module for the project. It is not a separate model.
+
+It contains common code used by the scripts:
+
+```text
+dataset loading
+fixed wavelength axis
+GPR fitting and prediction
+PCA fitting and reconstruction
+metric calculation
+plotting helpers
+```
+
+Keeping this code in one place prevents every model file from repeating the same functions.
+
 ## Run The Best Model
 
 ```powershell
@@ -210,13 +258,13 @@ It also displays actual-vs-predicted plots. The scripts do not save plot images 
 ## Run Other Models
 
 ```powershell
-uv run models/direct_gpr.py
+uv run models/gpr.py
 uv run models/pca_gpr.py
 uv run models/peak_aligned_gpr.py
-uv run baselines/spline_interpolation.py
-uv run baselines/pchip_interpolation.py
-uv run baselines/peak_aligned_surrogate.py
-uv run baselines/width_aligned_peak_surrogate.py
+uv run interpolation/spline_interpolation.py
+uv run interpolation/pchip_interpolation.py
+uv run interpolation/peak_aligned_surrogate.py
+uv run interpolation/width_aligned_peak_surrogate.py
 ```
 
 ## Research Use

@@ -19,7 +19,7 @@ from photonics.core import (
     regression_metrics,
 )
 
-COMPONENTS = 6
+COMPONENTS = 4
 ALIGNED_X = np.linspace(-0.35, 0.35, 141)
 
 

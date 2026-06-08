@@ -18,7 +18,7 @@ from photonics.core import (
 )
 
 
-COMPONENTS = 6
+COMPONENTS = 4
 
 
 def fit_pca(y, components):
