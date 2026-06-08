@@ -1,7 +1,12 @@
+from pathlib import Path
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 
-from main import (
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from photonics.core import (
     TESTING_FILE,
     TRAINING_FILE,
     X_AXIS,

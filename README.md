@@ -50,7 +50,7 @@ Peak-Aligned PCA-GPR
 File:
 
 ```text
-peak_aligned_pca_gpr.py
+models/peak_aligned_pca_gpr.py
 ```
 
 This is a hybrid machine-learning surrogate model:
@@ -114,25 +114,25 @@ This makes the prediction more physically meaningful and improves the model's ab
 ### Main ML Models
 
 ```text
-main.py
+models/direct_gpr.py
 ```
 
 Direct Gaussian Process Regression model.
 
 ```text
-pca_gpr.py
+models/pca_gpr.py
 ```
 
 PCA-assisted GPR without peak alignment.
 
 ```text
-peak_aligned_gpr.py
+models/peak_aligned_gpr.py
 ```
 
 Peak alignment with direct GPR shape prediction, without PCA.
 
 ```text
-peak_aligned_pca_gpr.py
+models/peak_aligned_pca_gpr.py
 ```
 
 Peak alignment with PCA shape compression and GPR prediction. This is the main selected ML model.
@@ -140,25 +140,25 @@ Peak alignment with PCA shape compression and GPR prediction. This is the main s
 ### Numerical / Baseline Models
 
 ```text
-spline_interpolation.py
+baselines/spline_interpolation.py
 ```
 
 Natural cubic spline interpolation baseline.
 
 ```text
-pchip_interpolation.py
+baselines/pchip_interpolation.py
 ```
 
 PCHIP interpolation baseline.
 
 ```text
-peak_aligned_surrogate.py
+baselines/peak_aligned_surrogate.py
 ```
 
 Peak-aligned local interpolation surrogate baseline.
 
 ```text
-width_aligned_peak_surrogate.py
+baselines/width_aligned_peak_surrogate.py
 ```
 
 Experimental width-aligned peak surrogate with data audit.
@@ -166,9 +166,9 @@ Experimental width-aligned peak surrogate with data audit.
 ### Visualization
 
 ```text
-plot_training_curves.py
-plot_testing_curves.py
-visualize_peak_alignment.py
+visualization/plot_training_curves.py
+visualization/plot_testing_curves.py
+visualization/visualize_peak_alignment.py
 ```
 
 These scripts show the raw curves and the peak-alignment transformation.
@@ -190,7 +190,7 @@ pyproject.toml
 ## Run The Best Model
 
 ```powershell
-uv run peak_aligned_pca_gpr.py
+uv run models/peak_aligned_pca_gpr.py
 ```
 
 The script prints:
@@ -210,13 +210,13 @@ It also displays actual-vs-predicted plots. The scripts do not save plot images 
 ## Run Other Models
 
 ```powershell
-uv run main.py
-uv run pca_gpr.py
-uv run peak_aligned_gpr.py
-uv run spline_interpolation.py
-uv run pchip_interpolation.py
-uv run peak_aligned_surrogate.py
-uv run width_aligned_peak_surrogate.py
+uv run models/direct_gpr.py
+uv run models/pca_gpr.py
+uv run models/peak_aligned_gpr.py
+uv run baselines/spline_interpolation.py
+uv run baselines/pchip_interpolation.py
+uv run baselines/peak_aligned_surrogate.py
+uv run baselines/width_aligned_peak_surrogate.py
 ```
 
 ## Research Use

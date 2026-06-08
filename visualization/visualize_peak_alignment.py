@@ -1,7 +1,12 @@
+from pathlib import Path
+import sys
+
 import matplotlib.pyplot as plt
 import numpy as np
 
-from main import TRAINING_FILE, X_AXIS, load_dataset
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from photonics.core import TRAINING_FILE, X_AXIS, load_dataset
 
 
 def peak_info(curve):

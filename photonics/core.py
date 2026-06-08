@@ -1,22 +1,22 @@
 from pathlib import Path
 import csv
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
+
+ROOT = Path(__file__).resolve().parent.parent
 TRAINING_FILE = ROOT / "dataset" / "training_clean.csv"
 TESTING_FILE = ROOT / "dataset" / "testing_clean.csv"
 X_AXIS = np.linspace(0.6, 1.2, 61)
 
 
-def load_dataset(path, expected_rows):
+def load_dataset(path, expected_rows=None):
     y_columns = [f"y_{index:02d}" for index in range(1, 62)]
 
     with path.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
 
-    if len(rows) != expected_rows:
+    if expected_rows is not None and len(rows) != expected_rows:
         raise ValueError(f"{path.name} has {len(rows)} rows; expected {expected_rows}.")
 
     expected_columns = ["ri", *y_columns]
@@ -133,27 +133,145 @@ def peak_metrics(actual, predicted):
     )
 
 
-def print_results(test_ri, actual, predicted, model):
+def fit_pca(y, components):
+    mean = y.mean(axis=0)
+    centered = y - mean
+    _, singular_values, vectors = np.linalg.svd(centered, full_matrices=False)
+    basis = vectors[:components]
+    coefficients = centered @ basis.T
+    variance = singular_values**2 / (len(y) - 1)
+    explained = variance[:components] / variance.sum()
+    return mean, basis, coefficients, explained
+
+
+def reconstruct_pca(mean, basis, coefficients):
+    return coefficients @ basis + mean
+
+
+def fit_natural_cubic_spline(x, y):
+    n = len(x)
+    intervals = np.diff(x)
+    slopes = np.diff(y, axis=0) / intervals[:, None]
+
+    system = np.zeros((n, n))
+    rhs = np.zeros((n, y.shape[1]))
+    system[0, 0] = 1.0
+    system[-1, -1] = 1.0
+
+    for row in range(1, n - 1):
+        system[row, row - 1] = intervals[row - 1]
+        system[row, row] = 2 * (intervals[row - 1] + intervals[row])
+        system[row, row + 1] = intervals[row]
+        rhs[row] = 6 * (slopes[row] - slopes[row - 1])
+
+    second_derivatives = np.linalg.solve(system, rhs)
+    return x, y, second_derivatives
+
+
+def predict_natural_cubic_spline(model, x_test):
+    x_train, y_train, second_derivatives = model
+    predictions = []
+
+    for x_value in x_test:
+        index = np.searchsorted(x_train, x_value) - 1
+        index = np.clip(index, 0, len(x_train) - 2)
+
+        left = x_train[index]
+        right = x_train[index + 1]
+        width = right - left
+        a = (right - x_value) / width
+        b = (x_value - left) / width
+
+        y_value = (
+            a * y_train[index]
+            + b * y_train[index + 1]
+            + ((a**3 - a) * second_derivatives[index] + (b**3 - b) * second_derivatives[index + 1])
+            * (width**2)
+            / 6
+        )
+        predictions.append(y_value)
+
+    return np.array(predictions)
+
+
+def endpoint_derivative(h_current, h_next, delta_current, delta_next):
+    derivative = ((2 * h_current + h_next) * delta_current - h_current * delta_next) / (
+        h_current + h_next
+    )
+    derivative[derivative * delta_current <= 0] = 0
+
+    too_large = (delta_current * delta_next < 0) & (
+        np.abs(derivative) > 3 * np.abs(delta_current)
+    )
+    derivative[too_large] = 3 * delta_current[too_large]
+    return derivative
+
+
+def fit_pchip(x, y):
+    h = np.diff(x)
+    delta = np.diff(y, axis=0) / h[:, None]
+    derivatives = np.zeros_like(y)
+
+    for index in range(1, len(x) - 1):
+        previous_delta = delta[index - 1]
+        next_delta = delta[index]
+        same_sign = previous_delta * next_delta > 0
+        w1 = 2 * h[index] + h[index - 1]
+        w2 = h[index] + 2 * h[index - 1]
+        derivatives[index, same_sign] = (w1 + w2) / (
+            (w1 / previous_delta[same_sign]) + (w2 / next_delta[same_sign])
+        )
+
+    derivatives[0] = endpoint_derivative(h[0], h[1], delta[0], delta[1])
+    derivatives[-1] = endpoint_derivative(h[-1], h[-2], delta[-1], delta[-2])
+    return x, y, derivatives
+
+
+def predict_pchip(model, x_test):
+    x_train, y_train, derivatives = model
+    predictions = []
+
+    for x_value in x_test:
+        index = np.searchsorted(x_train, x_value) - 1
+        index = np.clip(index, 0, len(x_train) - 2)
+
+        left = x_train[index]
+        right = x_train[index + 1]
+        width = right - left
+        t = (x_value - left) / width
+
+        h00 = 2 * t**3 - 3 * t**2 + 1
+        h10 = t**3 - 2 * t**2 + t
+        h01 = -2 * t**3 + 3 * t**2
+        h11 = t**3 - t**2
+
+        y_value = (
+            h00 * y_train[index]
+            + h10 * width * derivatives[index]
+            + h01 * y_train[index + 1]
+            + h11 * width * derivatives[index + 1]
+        )
+        predictions.append(y_value)
+
+    return np.array(predictions)
+
+
+def print_standard_results(title, test_ri, actual, predicted, extra_lines=None):
     overall_r2, overall_mae, overall_rmse = regression_metrics(actual, predicted)
-    (
-        peak_wavelength_error,
-        peak_loss_error,
-        actual_wl,
-        predicted_wl,
-        actual_loss,
-        predicted_loss,
-    ) = peak_metrics(
+    peak_wavelength_error, peak_loss_error, actual_wl, predicted_wl, actual_loss, predicted_loss = peak_metrics(
         actual,
         predicted,
     )
 
-    print("Gaussian Process Regression surrogate model")
-    print("=" * 52)
-    print(f"Training samples: 8")
+    print(title)
+    print("=" * max(52, len(title)))
+    print("Training samples: 8")
     print(f"Testing samples:  {len(test_ri)}")
-    print(f"Output points:    61")
-    print(f"Length scale:     {model['length_scale']:.8f}")
-    print(f"Noise:            {model['noise']:.2e}")
+    print("Output points:    61")
+    if extra_lines:
+        for line in extra_lines:
+            print(line)
+
     print()
     print("Overall testing accuracy")
     print("-" * 52)
@@ -195,7 +313,9 @@ def print_results(test_ri, actual, predicted, model):
         )
 
 
-def plot_predictions(test_ri, actual, predicted):
+def plot_predictions(title, test_ri, actual, predicted):
+    import matplotlib.pyplot as plt
+
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
 
@@ -213,20 +333,5 @@ def plot_predictions(test_ri, actual, predicted):
         ax.set_xlim(0.6, 1.2)
         ax.legend()
 
-    fig.suptitle("Actual vs Predicted Testing Curves", fontsize=16, weight="bold")
+    fig.suptitle(title, fontsize=16, weight="bold")
     plt.show()
-
-
-def main():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
-
-    model = fit_gpr(train_ri, train_y)
-    predicted_y = predict_gpr(model, test_ri)
-
-    print_results(test_ri, test_y, predicted_y, model)
-    plot_predictions(test_ri, test_y, predicted_y)
-
-
-if __name__ == "__main__":
-    main()

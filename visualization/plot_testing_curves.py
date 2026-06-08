@@ -1,14 +1,15 @@
 from pathlib import Path
+import sys
 import csv
 
 import matplotlib.pyplot as plt
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-ROOT = Path(__file__).resolve().parent
-DATA_FILE = ROOT / "dataset" / "training_clean.csv"
+from photonics.core import TESTING_FILE
 
 
-def load_training_data(path):
+def load_testing_data(path):
     with path.open(newline="", encoding="utf-8") as file:
         rows = list(csv.DictReader(file))
 
@@ -21,7 +22,7 @@ def load_training_data(path):
 
 def main():
     x_values = [0.6 + index * 0.01 for index in range(61)]
-    curves = load_training_data(DATA_FILE)
+    curves = load_testing_data(TESTING_FILE)
 
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(11, 6.5), constrained_layout=True)
@@ -29,7 +30,7 @@ def main():
     for ri, y_values in curves:
         ax.plot(x_values, y_values, linewidth=2, label=f"RI = {ri}")
 
-    ax.set_title("Training Dataset Confinement Loss Curves", fontsize=16, weight="bold")
+    ax.set_title("Testing Dataset Confinement Loss Curves", fontsize=16, weight="bold")
     ax.set_xlabel("Wavelength")
     ax.set_ylabel("Confinement Loss")
     ax.set_xlim(0.6, 1.2)

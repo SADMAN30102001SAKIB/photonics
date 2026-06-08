@@ -1,61 +1,80 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from pathlib import Path
+import sys
 
-from main import (
-    TRAINING_FILE,
+import matplotlib.pyplot as plt
+import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from photonics.core import (
     TESTING_FILE,
+    TRAINING_FILE,
     X_AXIS,
+    fit_gpr,
     load_dataset,
     peak_metrics,
+    predict_gpr,
     regression_metrics,
 )
 
-
-def fit_natural_cubic_spline(x, y):
-    n = len(x)
-    intervals = np.diff(x)
-    slopes = np.diff(y, axis=0) / intervals[:, None]
-
-    system = np.zeros((n, n))
-    rhs = np.zeros((n, y.shape[1]))
-    system[0, 0] = 1.0
-    system[-1, -1] = 1.0
-
-    for row in range(1, n - 1):
-        system[row, row - 1] = intervals[row - 1]
-        system[row, row] = 2 * (intervals[row - 1] + intervals[row])
-        system[row, row + 1] = intervals[row]
-        rhs[row] = 6 * (slopes[row] - slopes[row - 1])
-
-    second_derivatives = np.linalg.solve(system, rhs)
-    return x, y, second_derivatives
+ALIGNED_X = np.linspace(-0.35, 0.35, 141)
 
 
-def predict_natural_cubic_spline(model, x_test):
-    x_train, y_train, second_derivatives = model
+def extract_peaks(y):
+    peak_index = np.argmax(y, axis=1)
+    peak_wavelength = X_AXIS[peak_index]
+    peak_loss = y[np.arange(len(y)), peak_index]
+    return peak_wavelength, peak_loss
+
+
+def align_curve(y_curve, peak_wavelength, peak_loss):
+    shifted_x = X_AXIS - peak_wavelength
+    normalized_y = y_curve / peak_loss
+    return np.interp(ALIGNED_X, shifted_x, normalized_y, left=0.0, right=0.0)
+
+
+def fit_peak_aligned_gpr(train_ri, train_y):
+    peak_wavelength, peak_loss = extract_peaks(train_y)
+    aligned_shapes = np.array(
+        [
+            align_curve(curve, wavelength, loss)
+            for curve, wavelength, loss in zip(train_y, peak_wavelength, peak_loss)
+        ]
+    )
+
+    peak_model = fit_gpr(
+        train_ri,
+        np.column_stack([peak_wavelength, np.log(peak_loss)]),
+    )
+    shape_model = fit_gpr(train_ri, aligned_shapes)
+
+    return {
+        "peak_model": peak_model,
+        "shape_model": shape_model,
+    }
+
+
+def predict_peak_aligned_gpr(model, test_ri):
+    predicted_peak = predict_gpr(model["peak_model"], test_ri)
+    predicted_wavelength = predicted_peak[:, 0]
+    predicted_loss = np.exp(predicted_peak[:, 1])
+    aligned_shapes = predict_gpr(model["shape_model"], test_ri)
+
     predictions = []
-
-    for x_value in x_test:
-        index = np.searchsorted(x_train, x_value) - 1
-        index = np.clip(index, 0, len(x_train) - 2)
-
-        left = x_train[index]
-        right = x_train[index + 1]
-        width = right - left
-        a = (right - x_value) / width
-        b = (x_value - left) / width
-
-        y_value = (
-            a * y_train[index]
-            + b * y_train[index + 1]
-            + (
-                (a**3 - a) * second_derivatives[index]
-                + (b**3 - b) * second_derivatives[index + 1]
-            )
-            * (width**2)
-            / 6
+    for wavelength, loss, aligned_shape in zip(
+        predicted_wavelength,
+        predicted_loss,
+        aligned_shapes,
+    ):
+        shifted_x = X_AXIS - wavelength
+        normalized_curve = np.interp(
+            shifted_x,
+            ALIGNED_X,
+            aligned_shape,
+            left=0.0,
+            right=0.0,
         )
-        predictions.append(y_value)
+        predictions.append(np.maximum(normalized_curve * loss, 0.0))
 
     return np.array(predictions)
 
@@ -74,11 +93,12 @@ def print_results(test_ri, actual, predicted):
         predicted,
     )
 
-    print("Natural Cubic Spline interpolation")
-    print("=" * 52)
+    print("Peak-Aligned Gaussian Process Regression")
+    print("=" * 58)
     print("Training samples: 8")
     print(f"Testing samples:  {len(test_ri)}")
     print("Output points:    61")
+    print("Strategy: peak alignment + direct GPR shape prediction")
     print()
     print("Overall testing accuracy")
     print("-" * 52)
@@ -140,9 +160,7 @@ def plot_predictions(test_ri, actual, predicted):
         ax.set_xlim(0.6, 1.2)
         ax.legend()
 
-    fig.suptitle(
-        "Cubic Spline: Actual vs Predicted Testing Curves", fontsize=16, weight="bold"
-    )
+    fig.suptitle("Peak-Aligned GPR: Actual vs Predicted", fontsize=16, weight="bold")
     plt.show()
 
 
@@ -150,8 +168,8 @@ def main():
     train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
     test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
 
-    model = fit_natural_cubic_spline(train_ri, train_y)
-    predicted_y = predict_natural_cubic_spline(model, test_ri)
+    model = fit_peak_aligned_gpr(train_ri, train_y)
+    predicted_y = predict_peak_aligned_gpr(model, test_ri)
 
     print_results(test_ri, test_y, predicted_y)
     plot_predictions(test_ri, test_y, predicted_y)
