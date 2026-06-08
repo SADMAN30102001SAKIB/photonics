@@ -189,7 +189,7 @@ pyproject.toml
 
 ## How To Use The App
 
-This project is a script-based research app. You run one Python file at a time, and each script prints metrics and opens plots.
+This project is a script-based research app. The easiest way to use it is through the CLI menu in `app.py`.
 
 1. Install dependencies:
 
@@ -197,19 +197,33 @@ This project is a script-based research app. You run one Python file at a time, 
 uv sync
 ```
 
-2. Run the selected best model:
+2. Open the CLI menu:
+
+```powershell
+uv run app.py
+```
+
+3. Select the model or visualization script from the numbered menu.
+
+The selected script prints metrics and opens plots when plotting is included.
+
+## Run The Best Model Directly
+
+You can also run the selected best model without the menu:
 
 ```powershell
 uv run models/peak_aligned_pca_gpr.py
 ```
 
-3. Read the terminal output:
+The script prints:
 
 ```text
 R2, MAE, RMSE, per-RI accuracy, peak wavelength error, and peak loss error
 ```
 
-4. View the plot window:
+It also displays actual-vs-predicted plots. The scripts do not save plot images by default.
+
+Plot meaning:
 
 ```text
 solid line = actual testing curve
@@ -234,26 +248,6 @@ plotting helpers
 ```
 
 Keeping this code in one place prevents every model file from repeating the same functions.
-
-## Run The Best Model
-
-```powershell
-uv run models/peak_aligned_pca_gpr.py
-```
-
-The script prints:
-
-```text
-R2
-MAE
-RMSE
-per-RI metrics
-peak wavelength error
-peak confinement-loss error
-peak comparison table
-```
-
-It also displays actual-vs-predicted plots. The scripts do not save plot images by default.
 
 ## Run Other Models
 
