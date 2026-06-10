@@ -10,10 +10,10 @@ from photonics.core import (
     TESTING_FILE,
     TRAINING_FILE,
     X_AXIS,
-    fit_gpr,
+    fit_sklearn_gpr,
     load_dataset,
     peak_metrics,
-    predict_gpr,
+    predict_sklearn_gpr,
     regression_metrics,
 )
 
@@ -42,11 +42,11 @@ def fit_peak_aligned_gpr(train_ri, train_y):
         ]
     )
 
-    peak_model = fit_gpr(
+    peak_model = fit_sklearn_gpr(
         train_ri,
         np.column_stack([peak_wavelength, np.log(peak_loss)]),
     )
-    shape_model = fit_gpr(train_ri, aligned_shapes)
+    shape_model = fit_sklearn_gpr(train_ri, aligned_shapes)
 
     return {
         "peak_model": peak_model,
@@ -55,10 +55,10 @@ def fit_peak_aligned_gpr(train_ri, train_y):
 
 
 def predict_peak_aligned_gpr(model, test_ri):
-    predicted_peak = predict_gpr(model["peak_model"], test_ri)
+    predicted_peak = predict_sklearn_gpr(model["peak_model"], test_ri)
     predicted_wavelength = predicted_peak[:, 0]
     predicted_loss = np.exp(predicted_peak[:, 1])
-    aligned_shapes = predict_gpr(model["shape_model"], test_ri)
+    aligned_shapes = predict_sklearn_gpr(model["shape_model"], test_ri)
 
     predictions = []
     for wavelength, loss, aligned_shape in zip(

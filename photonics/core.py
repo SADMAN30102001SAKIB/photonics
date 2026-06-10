@@ -2,6 +2,8 @@ from pathlib import Path
 import csv
 
 import numpy as np
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import ConstantKernel, RBF, WhiteKernel
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -102,6 +104,30 @@ def predict_gpr(model, x_test):
     cross_kernel = rbf_kernel(x_scaled, model["x_train"], model["length_scale"])
     y_scaled = cross_kernel @ model["weights"]
     return y_scaled * model["y_std"] + model["y_mean"]
+
+
+def fit_sklearn_gpr(x_train, y_train):
+    x_mean = x_train.mean()
+    x_std = x_train.std()
+    x_scaled = ((x_train - x_mean) / x_std).reshape(-1, 1)
+    kernel = (
+        ConstantKernel(1.0, (1e-3, 1e3))
+        * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2))
+        + WhiteKernel(noise_level=1e-8, noise_level_bounds=(1e-10, 1e-3))
+    )
+    model = GaussianProcessRegressor(
+        kernel=kernel,
+        normalize_y=True,
+        n_restarts_optimizer=20,
+        random_state=42,
+    )
+    model.fit(x_scaled, y_train)
+    return {"model": model, "x_mean": x_mean, "x_std": x_std}
+
+
+def predict_sklearn_gpr(model, x_test):
+    x_scaled = ((x_test - model["x_mean"]) / model["x_std"]).reshape(-1, 1)
+    return model["model"].predict(x_scaled)
 
 
 def regression_metrics(actual, predicted):

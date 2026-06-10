@@ -582,18 +582,110 @@ confirms that the proposed sensor can effectively respond to small RI variations
 
 
 
-In addition to the numerical analysis, a machine-learning-assisted prediction approach is introduced to estimate the sensor response for pathogen-specific refractive indices. For this purpose, the confinement loss data obtained over the RI range of 1.33--1.41 are used as the reference dataset. The analyte refractive index is considered as the input parameter, while the resonance wavelength and confinement loss response are considered as the output responses. After training the regression model, the sensor response is predicted for the pathogen RI values of 1.3300, 1.3650, 1.3833, 1.3880, and 1.3921.
+To reduce the need for repeated full-wave simulation at every pathogen RI, a machine-learning-assisted prediction step is added after the numerical sensing analysis. The training dataset is formed from the DLC-coated confinement loss spectra simulated over the RI range of 1.33--1.40. Each spectrum is sampled at 61 wavelength points from 0.60 to 1.20~\textmu m. Thus, the input of the regression model is the analyte RI, $n_a$, and the output is the complete confinement loss curve, $\alpha(\lambda,n_a)$. The four pathogen RI values 1.3650, 1.3833, 1.3880, and 1.3921 are used as held-out testing samples, while RI = 1.3300 is already included in the reference simulation grid.
 
-The machine-learning model helps to estimate the resonance behavior at pathogen-specific RI values without performing repeated full numerical simulations for every sample. The predicted resonance points follow the same trend as the simulated confinement loss spectra, where higher RI samples show resonance peaks at longer wavelengths. This confirms that the machine-learning-assisted approach can be used as a supporting tool for rapid prediction of pathogen response. Therefore, the combination of numerical sensing analysis and machine learning improves the practical usefulness of the proposed sensor for fast water pathogen identification.
+Gaussian process regression (GPR) is selected because the available training set is very small and the model can still learn a smooth nonlinear relation without requiring a large number of samples. The GPR models are implemented using the \texttt{GaussianProcessRegressor} module of scikit-learn with standardized RI input, output normalization, an RBF covariance kernel, and a white-noise term \cite{rasmussen2006gaussian,pedregosa2011scikit}. In GPR, the unknown response function is considered as a Gaussian process,
+\begin{equation}
+f(n_a)\sim \mathcal{GP}\left(m(n_a),k(n_a,n_a')\right),
+\label{eq:gpr_prior}
+\end{equation}
+where $m(n_a)$ is the mean function and $k(n_a,n_a')$ is the covariance kernel. In this work, a squared-exponential kernel is used to describe the smooth RI-dependent variation of the sensor response,
+\begin{equation}
+k(n_a,n_a')=\sigma_f^2\exp\left[-\frac{(n_a-n_a')^2}{2l^2}\right]+\sigma_n^2\delta_{n_a n_a'},
+\label{eq:gpr_kernel}
+\end{equation}
+where $\sigma_f^2$ is the signal variance, $l$ is the length scale, $\sigma_n^2$ is the noise term, and $\delta_{n_a n_a'}$ is the Kronecker delta. The direct GPR model learns the mapping $n_a\rightarrow [\alpha_1,\alpha_2,\ldots,\alpha_{61}]$ from the simulated curves.
 
-The complete procedure of the machine-learning-assisted pathogen detection approach can be described in four steps. First, the confinement loss spectra are generated for different analyte refractive indices using the optimized DLC-coated PCF-SPR structure. Second, the resonance wavelength and corresponding loss values are extracted from the spectra. Third, the extracted RI-dependent sensing data are used to train a regression-based machine learning model. Finally, the trained model predicts the resonance response for pathogen-specific refractive indices. This approach reduces repeated simulation effort and provides a fast estimation of the optical response of the proposed sensor.
+However, direct curve prediction is not the most suitable form for this sensor response. The reason is that the resonance peak moves along the wavelength axis when the RI changes. As a result, the same fixed wavelength point may lie before the peak for one RI, near the peak for another RI, and after the peak for a higher RI. This makes the output values change sharply even though the physical curve shape changes smoothly. To handle this, a peak-aligned GPR model is also developed. First, the resonance wavelength and peak loss are extracted from each training spectrum as
+\begin{equation}
+\lambda_p(n_a)=\arg\max_{\lambda}\alpha(\lambda,n_a), \qquad
+A_p(n_a)=\max_{\lambda}\alpha(\lambda,n_a).
+\label{eq:peak_extract}
+\end{equation}
+Then each curve is shifted and normalized using
+\begin{equation}
+\tilde{\lambda}=\lambda-\lambda_p(n_a), \qquad
+\tilde{\alpha}(\tilde{\lambda},n_a)=\frac{\alpha(\lambda,n_a)}{A_p(n_a)}.
+\label{eq:peak_align}
+\end{equation}
+This separates the prediction into three simpler parts: peak position, peak height, and normalized spectral shape. The peak-aligned GPR model predicts $\lambda_p$, $\log(A_p)$, and the aligned curve shape. The final confinement loss curve is then restored as
+\begin{equation}
+\hat{\alpha}(\lambda,n_a)=\exp(\hat{z}_p)\,
+\hat{s}\left(\lambda-\hat{\lambda}_p\right),
+\label{eq:peak_restore}
+\end{equation}
+where $\hat{\lambda}_p$ is the predicted resonance wavelength, $\hat{z}_p=\log(\hat{A}_p)$ is the predicted logarithmic peak loss, and $\hat{s}$ is the predicted normalized shape. This alignment idea is consistent with curve registration, where phase or position variation is reduced before comparing functional responses \cite{ramsay2005functional,ramsay1998curve,marron2015functional}.
+
+\begin{figure}[!t]
+    \hfill
+    \includegraphics[width=0.92\textwidth]{ML_peak_alignment.png}
+    \caption{Peak-alignment procedure used before GPR prediction: (a) original confinement loss spectra, (b) shifted spectra with resonance peaks moved to zero wavelength offset, and (c) normalized spectra after dividing by the peak loss.}
+    \label{fig:ml_peak_alignment}
+\end{figure}
+
+The testing performance of the direct GPR and peak-aligned GPR models is summarized in Table~\ref{tab:ml_model_comparison}. The direct GPR model gives an overall $R^2$ of 0.7137, with MAE and RMSE values of 0.01485 and 0.02995, respectively. This result shows that the direct model can follow the general trend, but it loses accuracy near the resonance peaks. After applying peak alignment, the overall $R^2$ increases to 0.9801, while the MAE and RMSE decrease to 0.00305 and 0.00791, respectively. The mean resonance wavelength error is also reduced from 0.0175~\textmu m to 0.0025~\textmu m. Therefore, the improvement is not only numerical; it directly improves the prediction of the physical resonance point of the sensor.
+
+\begin{table}[!t]
+\centering
+\caption{Testing performance comparison between direct GPR and peak-aligned GPR.}
+\label{tab:ml_model_comparison}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{4pt}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Model} & $\boldsymbol{R^2}$ & \textbf{MAE} & \textbf{RMSE} & \textbf{Mean peak WL error (\textmu m)} & \textbf{Mean peak loss error} \\
+\hline
+Direct GPR & 0.7137 & 0.01485 & 0.02995 & 0.0175 & 0.03640 \\
+\hline
+Peak-aligned GPR & 0.9801 & 0.00305 & 0.00791 & 0.0025 & 0.01301 \\
+\hline
+\end{tabular}%
+}
+\end{table}
+
+Table~\ref{tab:ml_peak_prediction} gives the peak-level comparison for the four held-out pathogen RI samples. For direct GPR, the predicted peak wavelength deviates by 0.01--0.02~\textmu m because the model predicts all fixed wavelength points at once. The peak-aligned GPR model gives exact peak wavelength prediction for three of the four testing samples and only 0.01~\textmu m error for RI = 1.3833. The peak loss values are also closer to the actual simulated values for all four samples. This confirms that peak alignment helps the model learn the resonance movement instead of treating it as an irregular point-by-point change in the output curve.
+
+\begin{table}[!t]
+\centering
+\caption{Actual and predicted resonance peak values for the held-out pathogen RI samples.}
+\label{tab:ml_peak_prediction}
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{3pt}
+\scriptsize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+\multirow{2}{*}{\textbf{RI}} &
+\multicolumn{2}{c|}{\textbf{Actual FEM result}} &
+\multicolumn{2}{c|}{\textbf{Direct GPR}} &
+\multicolumn{2}{c|}{\textbf{Peak-aligned GPR}} \\
+\cline{2-7}
+& $\boldsymbol{\lambda_p}$ \textbf{(\textmu m)} & $\boldsymbol{A_p}$ &
+$\boldsymbol{\hat{\lambda}_p}$ \textbf{(\textmu m)} & $\boldsymbol{\hat{A}_p}$ &
+$\boldsymbol{\hat{\lambda}_p}$ \textbf{(\textmu m)} & $\boldsymbol{\hat{A}_p}$ \\
+\hline
+1.3650 & 0.83 & 0.10298 & 0.85 & 0.08779 & 0.83 & 0.09742 \\
+\hline
+1.3833 & 0.91 & 0.22155 & 0.89 & 0.16042 & 0.92 & 0.21180 \\
+\hline
+1.3880 & 0.94 & 0.28252 & 0.96 & 0.29426 & 0.94 & 0.26804 \\
+\hline
+1.3921 & 0.97 & 0.35087 & 0.96 & 0.29334 & 0.97 & 0.32862 \\
+\hline
+\end{tabular}%
+}
+\end{table}
 
 \begin{figure}[!t]
     \centering
-    \includegraphics[width=0.48\textwidth]{ML_flowchart}
-    \caption{Schematic workflow of the machine-learning-assisted prediction approach for water pathogen detection using the proposed DLC-coated PCF-SPR sensor.}
-    \label{fig:ml_flowchart}
+    \includegraphics[width=0.98\textwidth]{ML_peak_aligned_gpr_prediction.png}
+    \caption{Actual and predicted confinement loss spectra for the held-out pathogen RI samples using the peak-aligned GPR model.}
+    \label{fig:ml_peak_aligned_gpr_prediction}
 \end{figure}
+
+The overlay curves in Fig.~\ref{fig:ml_peak_aligned_gpr_prediction} show that the peak-aligned GPR model can reproduce both the spectral shift and the peak magnitude of the pathogen samples with good agreement. Some small difference remains in the tail region after the resonance peak, especially for the higher RI samples, because only eight simulated spectra are available for training. Even with this limited dataset, the model captures the main resonance behavior and gives reliable peak prediction. Hence, the peak-aligned GPR model is used here as a supporting prediction tool for rapid estimation of pathogen-specific sensor response, while the FEM simulation remains the reference source for final sensor validation.
 
 \subsection{\textbf{{Fabrication Feasibility of the Proposed Biosensor}}}
 
