@@ -14,9 +14,9 @@ from photonics.core import TESTING_FILE, TRAINING_FILE, X_AXIS, load_dataset
 
 OUT_DIR = Path("Research_Soumik")
 TITLE_SIZE = 24
-AXIS_LABEL_SIZE = 23
-TICK_LABEL_SIZE = 20
-LEGEND_SIZE = 20
+AXIS_LABEL_SIZE = 26
+TICK_LABEL_SIZE = 23
+LEGEND_SIZE = 23
 LINE_WIDTH = 3.6
 MARKER_SIZE = 110
 
@@ -73,25 +73,34 @@ def save_peak_alignment():
         axes[2].scatter(0, 1, s=MARKER_SIZE)
 
     axes[0].set_title("(a) Original", fontsize=TITLE_SIZE, weight="bold")
-    axes[0].set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE)
-    axes[0].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE)
+    axes[0].set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[0].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
 
     axes[1].set_title("(b) Shifted peak", fontsize=TITLE_SIZE, weight="bold")
-    axes[1].set_xlabel("Peak-centered wavelength (um)", fontsize=AXIS_LABEL_SIZE)
-    axes[1].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE)
+    axes[1].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[1].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[1].axvline(0, color="black", linewidth=1.8, alpha=0.5)
 
     axes[2].set_title("(c) Normalized", fontsize=TITLE_SIZE, weight="bold")
-    axes[2].set_xlabel("Peak-centered wavelength (um)", fontsize=AXIS_LABEL_SIZE)
-    axes[2].set_ylabel("Normalized loss", fontsize=AXIS_LABEL_SIZE)
+    axes[2].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[2].set_ylabel("Normalized loss", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[2].axvline(0, color="black", linewidth=1.8, alpha=0.5)
     axes[2].axhline(1, color="black", linewidth=1.8, alpha=0.5)
 
     for ax in axes:
         ax.tick_params(axis="both", labelsize=TICK_LABEL_SIZE)
-        ax.legend(fontsize=LEGEND_SIZE, frameon=True)
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontweight("bold")
+        legend = ax.legend(fontsize=LEGEND_SIZE, frameon=True)
+        for text in legend.get_texts():
+            text.set_fontweight("bold")
 
-    fig.savefig(OUT_DIR / "ML_peak_alignment.png", dpi=300, bbox_inches="tight")
+    fig.savefig(
+        OUT_DIR / "ML_peak_alignment.png",
+        dpi=300,
+        bbox_inches="tight",
+        pad_inches=0.15,
+    )
     plt.close(fig)
 
 
@@ -123,16 +132,21 @@ def save_peak_aligned_prediction():
             label="Predicted",
         )
         ax.set_title(f"RI = {ri:.4f}", fontsize=TITLE_SIZE, weight="bold")
-        ax.set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE)
-        ax.set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE)
+        ax.set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+        ax.set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
         ax.set_xlim(0.6, 1.2)
         ax.tick_params(axis="both", labelsize=TICK_LABEL_SIZE)
-        ax.legend(fontsize=LEGEND_SIZE, frameon=True)
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontweight("bold")
+        legend = ax.legend(fontsize=LEGEND_SIZE, frameon=True)
+        for text in legend.get_texts():
+            text.set_fontweight("bold")
 
     fig.savefig(
         OUT_DIR / "ML_peak_aligned_gpr_prediction.png",
         dpi=300,
         bbox_inches="tight",
+        pad_inches=0.15,
     )
     plt.close(fig)
 
