@@ -584,12 +584,12 @@ confirms that the proposed sensor can effectively respond to small RI variations
 
 To reduce the need for repeated full-wave simulation at every pathogen RI, a machine-learning-assisted prediction step is added after the numerical sensing analysis. The training dataset is formed from the DLC-coated confinement loss spectra simulated over the RI range of 1.33--1.40. Each spectrum is sampled at 61 wavelength points from 0.60 to 1.20~\textmu m. Thus, the input of the regression model is the analyte RI, $n_a$, and the output is the complete confinement loss curve, $\alpha(\lambda,n_a)$. The four pathogen RI values 1.3650, 1.3833, 1.3880, and 1.3921 are used as held-out testing samples, while RI = 1.3300 is already included in the reference simulation grid.
 
-Gaussian process regression (GPR) is selected because the available training set is very small and the model can still learn a smooth nonlinear relation without requiring a large number of samples. The GPR models are implemented using the \texttt{GaussianProcessRegressor} module of scikit-learn with standardized RI input, output normalization, an RBF covariance kernel, and a white-noise term \cite{rasmussen2006gaussian,pedregosa2011scikit}. In GPR, the unknown response function is considered as a Gaussian process,
+Gaussian process regression (GPR) is selected because the available training set is very small and the model can still learn a smooth nonlinear relation without requiring a large number of samples. The GPR models are implemented using the \texttt{GaussianProcessRegressor} module of scikit-learn with standardized RI input, output normalization, an RBF covariance kernel, and a white-noise term \cite{rasmussen2006gaussian,pedregosa2011scikit}. In GPR, the unknown response function is considered as a Gaussian process \cite{rasmussen2006gaussian},
 \begin{equation}
 f(n_a)\sim \mathcal{GP}\left(m(n_a),k(n_a,n_a')\right),
 \label{eq:gpr_prior}
 \end{equation}
-where $m(n_a)$ is the mean function and $k(n_a,n_a')$ is the covariance kernel. In this work, a squared-exponential kernel is used to describe the smooth RI-dependent variation of the sensor response,
+where $m(n_a)$ is the mean function and $k(n_a,n_a')$ is the covariance kernel. In this work, a squared-exponential kernel is used to describe the smooth RI-dependent variation of the sensor response \cite{rasmussen2006gaussian},
 \begin{equation}
 k(n_a,n_a')=\sigma_f^2\exp\left[-\frac{(n_a-n_a')^2}{2l^2}\right]+\sigma_n^2\delta_{n_a n_a'},
 \label{eq:gpr_kernel}
