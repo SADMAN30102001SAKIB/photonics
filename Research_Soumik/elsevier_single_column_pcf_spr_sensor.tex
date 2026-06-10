@@ -407,33 +407,54 @@ The major performance parameters of the proposed sensor without DLC and with DLC
 \centering
 \caption{ Performance comparison of the proposed sensor without DLC and with DLC coating.}
 \label{tab:performance_matrix}
-\normalsize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.5}
-\resizebox{\textwidth}{!}{
-\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|}
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.55}
+\textbf{(a) WS, AS, and FWHM comparison}\\[2pt]
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|c|c|}
 \hline
 \textbf{RI} 
 & \multicolumn{2}{c|}{\textbf{WS (nm/RIU)}} 
 & \multicolumn{2}{c|}{\textbf{AS (RIU$^{-1}$)}} 
-& \multicolumn{2}{c|}{\textbf{FWHM ($\mu$m)}} 
-& \multicolumn{2}{c|}{\textbf{FOM (RIU$^{-1}$)}} 
-& \multicolumn{2}{c|}{\textbf{Resolution (RIU)}} \\
-\cline{2-11}
-& \textbf{Without DLC} & \textbf{With DLC}
-& \textbf{Without DLC} & \textbf{With DLC}
+& \multicolumn{2}{c|}{\textbf{FWHM ($\mu$m)}} \\
+\cline{2-7}
 & \textbf{Without DLC} & \textbf{With DLC}
 & \textbf{Without DLC} & \textbf{With DLC}
 & \textbf{Without DLC} & \textbf{With DLC} \\
 \hline
-1.33 & 2000  & 3000  & -71.47  & -170.75  & 0.08 & 0.05 & 25    & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
-1.34 & 2000  & 3000  & -90.91  & -220.98  & 0.07 & 0.05 & 28.57 & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
-1.35 & 2000  & 3000  & -121.26 & -283.75  & 0.06 & 0.05 & 33.33 & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
-1.36 & 3000  & 4000  & -163.78 & -406.46  & 0.07 & 0.04 & 42.86 & 100    & $3.0\times10^{-5}$ & $2.5\times10^{-5}$ \\
-1.37 & 4000  & 4000  & -125.62 & -583.55  & 0.06 & 0.04 & 66.67 & 100    & $2.5\times10^{-5}$ & $2.5\times10^{-5}$ \\
-1.38 & 3000  & 7000  & -117.40 & -912.15  & 0.06 & 0.05 & 50    & 140    & $3.0\times10^{-5}$ & $1.4\times10^{-5}$ \\
-1.39 & 6000  & 8000  & -1094.3 & -1106.6  & 0.04 & 0.04 & 150   & 200    & $1.7\times10^{-5}$ & $1.3\times10^{-5}$ \\
-1.40 & 10000 & 13000 & -2580.0 & -1768.4  & 0.04 & 0.06 & 250   & 216.67 & $1.0\times10^{-5}$ & $7.7\times10^{-6}$ \\
+1.33 & 2000  & 3000  & -71.47  & -170.75  & 0.08 & 0.05 \\
+1.34 & 2000  & 3000  & -90.91  & -220.98  & 0.07 & 0.05 \\
+1.35 & 2000  & 3000  & -121.26 & -283.75  & 0.06 & 0.05 \\
+1.36 & 3000  & 4000  & -163.78 & -406.46  & 0.07 & 0.04 \\
+1.37 & 4000  & 4000  & -125.62 & -583.55  & 0.06 & 0.04 \\
+1.38 & 3000  & 7000  & -117.40 & -912.15  & 0.06 & 0.05 \\
+1.39 & 6000  & 8000  & -1094.3 & -1106.6  & 0.04 & 0.04 \\
+1.40 & 10000 & 13000 & -2580.0 & -1768.4  & 0.04 & 0.06 \\
+\hline
+\end{tabular}
+}
+
+\vspace{0.18cm}
+\textbf{(b) FOM and resolution comparison}\\[2pt]
+\resizebox{0.82\textwidth}{!}{%
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{RI}
+& \multicolumn{2}{c|}{\textbf{FOM (RIU$^{-1}$)}}
+& \multicolumn{2}{c|}{\textbf{Resolution (RIU)}} \\
+\cline{2-5}
+& \textbf{Without DLC} & \textbf{With DLC}
+& \textbf{Without DLC} & \textbf{With DLC} \\
+\hline
+1.33 & 25    & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
+1.34 & 28.57 & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
+1.35 & 33.33 & 60     & $5.0\times10^{-5}$ & $3.3\times10^{-5}$ \\
+1.36 & 42.86 & 100    & $3.0\times10^{-5}$ & $2.5\times10^{-5}$ \\
+1.37 & 66.67 & 100    & $2.5\times10^{-5}$ & $2.5\times10^{-5}$ \\
+1.38 & 50    & 140    & $3.0\times10^{-5}$ & $1.4\times10^{-5}$ \\
+1.39 & 150   & 200    & $1.7\times10^{-5}$ & $1.3\times10^{-5}$ \\
+1.40 & 250   & 216.67 & $1.0\times10^{-5}$ & $7.7\times10^{-6}$ \\
 \hline
 \end{tabular}
 }
