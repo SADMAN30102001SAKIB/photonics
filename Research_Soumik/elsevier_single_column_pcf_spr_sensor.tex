@@ -616,12 +616,12 @@ This separates the prediction into three simpler parts: peak position, peak heig
 \hat{s}\left(\lambda-\hat{\lambda}_p\right),
 \label{eq:peak_restore}
 \end{equation}
-where $\hat{\lambda}_p$ is the predicted resonance wavelength, $\hat{z}_p=\log(\hat{A}_p)$ is the predicted logarithmic peak loss, and $\hat{s}$ is the predicted normalized shape. This alignment idea is consistent with curve registration, where phase or position variation is reduced before comparing functional responses \cite{ramsay2005functional,ramsay1998curve,marron2015functional}.
+where $\hat{\lambda}_p$ is the predicted resonance wavelength, $\hat{z}_p=\log(\hat{A}_p)$ is the predicted logarithmic peak loss, and $\hat{s}$ is the predicted normalized shape. This alignment idea is consistent with curve registration and landmark-based alignment, where identifiable features such as peaks are used to reduce phase or position variation before comparing functional responses \cite{ramsay2005functional,ramsay1998curve,james2007curve,marron2015functional}.
 
 \begin{figure}[!t]
     \centering
     \includegraphics[width=1.0\textwidth]{ML_peak_alignment.png}
-    \caption{Peak-alignment procedure used before GPR prediction: (a) original confinement loss spectra, (b) shifted spectra with resonance peaks moved to zero wavelength offset, and (c) normalized spectra after dividing by the peak loss.}
+    \caption{Peak-alignment procedure used before GPR prediction: (a) original CL spectra, (b) shifted spectra with resonance peaks moved to zero wavelength offset, and (c) normalized spectra after dividing by the peak CL, where CL denotes confinement loss.}
     \label{fig:ml_peak_alignment}
 \end{figure}
 
@@ -631,13 +631,15 @@ The testing performance of the direct GPR and peak-aligned GPR models is summari
 \centering
 \caption{Testing performance comparison between direct GPR and peak-aligned GPR.}
 \label{tab:ml_model_comparison}
-\renewcommand{\arraystretch}{1.25}
-\setlength{\tabcolsep}{4pt}
-\scriptsize
+\renewcommand{\arraystretch}{1.35}
+\setlength{\tabcolsep}{6pt}
+\small
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{|l|c|c|c|c|c|}
 \hline
-\textbf{Model} & $\boldsymbol{R^2}$ & \textbf{MAE} & \textbf{RMSE} & \textbf{Mean peak WL error (\textmu m)} & \textbf{Mean peak loss error} \\
+\textbf{Model} & $\boldsymbol{R^2}$ & \textbf{MAE} & \textbf{RMSE} &
+\begin{tabular}[c]{@{}c@{}}\textbf{Mean peak WL}\\\textbf{error (\textmu m)}\end{tabular} &
+\begin{tabular}[c]{@{}c@{}}\textbf{Mean peak CL}\\\textbf{error}\end{tabular} \\
 \hline
 Direct GPR & 0.7137 & 0.01485 & 0.02995 & 0.0175 & 0.03640 \\
 \hline
@@ -683,7 +685,7 @@ $\boldsymbol{\hat{\lambda}_p}$ \textbf{(\textmu m)} & $\boldsymbol{\hat{A}_p}$ \
 \begin{figure}[!t]
     \centering
     \includegraphics[width=1.0\textwidth]{ML_peak_aligned_gpr_prediction.png}
-    \caption{Actual and predicted confinement loss spectra for the held-out pathogen RI samples using the peak-aligned GPR model.}
+    \caption{Actual and predicted CL spectra for the held-out pathogen RI samples using the peak-aligned GPR model, where CL denotes confinement loss.}
     \label{fig:ml_peak_aligned_gpr_prediction}
 \end{figure}
 

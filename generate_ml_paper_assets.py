@@ -74,16 +74,16 @@ def save_peak_alignment():
 
     axes[0].set_title("(a) Original", fontsize=TITLE_SIZE, weight="bold")
     axes[0].set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
-    axes[0].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[0].set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
 
     axes[1].set_title("(b) Shifted peak", fontsize=TITLE_SIZE, weight="bold")
     axes[1].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
-    axes[1].set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[1].set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[1].axvline(0, color="black", linewidth=1.8, alpha=0.5)
 
     axes[2].set_title("(c) Normalized", fontsize=TITLE_SIZE, weight="bold")
     axes[2].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
-    axes[2].set_ylabel("Normalized loss", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[2].set_ylabel("Normalized CL", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[2].axvline(0, color="black", linewidth=1.8, alpha=0.5)
     axes[2].axhline(1, color="black", linewidth=1.8, alpha=0.5)
 
@@ -133,7 +133,7 @@ def save_peak_aligned_prediction():
         )
         ax.set_title(f"RI = {ri:.4f}", fontsize=TITLE_SIZE, weight="bold")
         ax.set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
-        ax.set_ylabel("Loss (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+        ax.set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
         ax.set_xlim(0.6, 1.2)
         ax.tick_params(axis="both", labelsize=TICK_LABEL_SIZE)
         for label in ax.get_xticklabels() + ax.get_yticklabels():
