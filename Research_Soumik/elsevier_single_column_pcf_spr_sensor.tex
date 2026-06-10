@@ -596,7 +596,9 @@ k(n_a,n_a')=\sigma_f^2\exp\left[-\frac{(n_a-n_a')^2}{2l^2}\right]+\sigma_n^2\del
 \end{equation}
 where $\sigma_f^2$ is the signal variance, $l$ is the length scale, $\sigma_n^2$ is the noise term, and $\delta_{n_a n_a'}$ is the Kronecker delta. The direct GPR model learns the mapping $n_a\rightarrow [\alpha_1,\alpha_2,\ldots,\alpha_{61}]$ from the simulated curves.
 
-However, direct curve prediction is not the most suitable form for this sensor response. The reason is that the resonance peak moves along the wavelength axis when the RI changes. As a result, the same fixed wavelength point may lie before the peak for one RI, near the peak for another RI, and after the peak for a higher RI. This makes the output values change sharply even though the physical curve shape changes smoothly. To handle this, a peak-aligned GPR model is also developed. First, the resonance wavelength and peak loss are extracted from each training spectrum as
+However, direct curve prediction is not the most suitable form for this sensor response. In the direct GPR model, each wavelength point is treated as a fixed output column. For example, the model tries to learn the loss value at 0.90~\textmu m, 0.91~\textmu m, 0.92~\textmu m, and so on as separate outputs. This becomes difficult because the resonance peak does not stay at the same wavelength when the RI changes. A wavelength point that is located before the peak for one RI may become the peak region for another RI and may move to the falling side of the curve for a higher RI. Therefore, the value at a fixed wavelength can change suddenly, not because the sensor response is random, but because the whole peak is shifting along the wavelength axis. In other words, the direct model is forced to learn peak movement and curve shape at the same time from only a few training samples.
+
+To make the learning problem simpler, a peak-aligned GPR model is also developed. The main idea is to first place all spectra in a common coordinate system where the resonance peak is located at zero and the peak height is normalized to one. After this transformation, the model no longer has to learn a moving peak as a moving object. Instead, it learns three simpler RI-dependent quantities: where the peak should be placed, how high the peak should be, and what the normalized spectral shape should look like. First, the resonance wavelength and peak loss are extracted from each training spectrum as
 \begin{equation}
 \lambda_p(n_a)=\arg\max_{\lambda}\alpha(\lambda,n_a), \qquad
 A_p(n_a)=\max_{\lambda}\alpha(\lambda,n_a).
@@ -608,7 +610,7 @@ Then each curve is shifted and normalized using
 \tilde{\alpha}(\tilde{\lambda},n_a)=\frac{\alpha(\lambda,n_a)}{A_p(n_a)}.
 \label{eq:peak_align}
 \end{equation}
-This separates the prediction into three simpler parts: peak position, peak height, and normalized spectral shape. The peak-aligned GPR model predicts $\lambda_p$, $\log(A_p)$, and the aligned curve shape. The final confinement loss curve is then restored as
+This separates the prediction into three simpler parts: peak position, peak height, and normalized spectral shape. In the implementation, these three quantities are not predicted by three independent models. Instead, two multi-output GPR regressors are used: the first GPR regressor predicts the two peak parameters, $\lambda_p$ and $\log(A_p)$, while the second GPR regressor predicts the aligned normalized spectral shape. The final confinement loss curve is then restored as
 \begin{equation}
 \hat{\alpha}(\lambda,n_a)=\exp(\hat{z}_p)\,
 \hat{s}\left(\lambda-\hat{\lambda}_p\right),
@@ -617,8 +619,8 @@ This separates the prediction into three simpler parts: peak position, peak heig
 where $\hat{\lambda}_p$ is the predicted resonance wavelength, $\hat{z}_p=\log(\hat{A}_p)$ is the predicted logarithmic peak loss, and $\hat{s}$ is the predicted normalized shape. This alignment idea is consistent with curve registration, where phase or position variation is reduced before comparing functional responses \cite{ramsay2005functional,ramsay1998curve,marron2015functional}.
 
 \begin{figure}[!t]
-    \hfill
-    \includegraphics[width=0.92\textwidth]{ML_peak_alignment.png}
+    \centering
+    \includegraphics[width=1.0\textwidth]{ML_peak_alignment.png}
     \caption{Peak-alignment procedure used before GPR prediction: (a) original confinement loss spectra, (b) shifted spectra with resonance peaks moved to zero wavelength offset, and (c) normalized spectra after dividing by the peak loss.}
     \label{fig:ml_peak_alignment}
 \end{figure}
@@ -680,7 +682,7 @@ $\boldsymbol{\hat{\lambda}_p}$ \textbf{(\textmu m)} & $\boldsymbol{\hat{A}_p}$ \
 
 \begin{figure}[!t]
     \centering
-    \includegraphics[width=0.98\textwidth]{ML_peak_aligned_gpr_prediction.png}
+    \includegraphics[width=1.0\textwidth]{ML_peak_aligned_gpr_prediction.png}
     \caption{Actual and predicted confinement loss spectra for the held-out pathogen RI samples using the peak-aligned GPR model.}
     \label{fig:ml_peak_aligned_gpr_prediction}
 \end{figure}
