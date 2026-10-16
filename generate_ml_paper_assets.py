@@ -9,8 +9,14 @@ import numpy as np
 from scipy.interpolate import make_interp_spline
 
 from models.peak_aligned_gpr import fit_peak_aligned_gpr, predict_peak_aligned_gpr
-from photonics.core import TESTING_FILE, TRAINING_FILE, X_AXIS, load_dataset
-
+from photonics.core import (
+    TESTING_FILE,
+    TRAINING_FILE,
+    X_AXIS,
+    load_dataset,
+    subplot_grid,
+    visual_xlim,
+)
 
 OUT_DIR = Path("Research_Soumik")
 TITLE_SIZE = 24
@@ -33,7 +39,7 @@ def peak_info(curve):
 
 
 def save_peak_alignment():
-    ri, y = load_dataset(TRAINING_FILE, expected_rows=8)
+    ri, y = load_dataset(TRAINING_FILE, missing="interpolate")
     selected = [5, 6, 7]
 
     plt.style.use("seaborn-v0_8-whitegrid")
@@ -77,12 +83,16 @@ def save_peak_alignment():
     axes[0].set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
 
     axes[1].set_title("(b) Shifted peak", fontsize=TITLE_SIZE, weight="bold")
-    axes[1].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[1].set_xlabel(
+        "Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold"
+    )
     axes[1].set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[1].axvline(0, color="black", linewidth=1.8, alpha=0.5)
 
     axes[2].set_title("(c) Normalized", fontsize=TITLE_SIZE, weight="bold")
-    axes[2].set_xlabel("Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
+    axes[2].set_xlabel(
+        "Centered wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold"
+    )
     axes[2].set_ylabel("Normalized CL", fontsize=AXIS_LABEL_SIZE, weight="bold")
     axes[2].axvline(0, color="black", linewidth=1.8, alpha=0.5)
     axes[2].axhline(1, color="black", linewidth=1.8, alpha=0.5)
@@ -105,14 +115,21 @@ def save_peak_alignment():
 
 
 def save_peak_aligned_prediction():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
+    train_ri, train_y = load_dataset(TRAINING_FILE, missing="interpolate")
+    test_ri, test_y = load_dataset(TESTING_FILE, missing="keep")
 
     model = fit_peak_aligned_gpr(train_ri, train_y)
     predicted_y = predict_peak_aligned_gpr(model, test_ri)
 
     plt.style.use("seaborn-v0_8-whitegrid")
-    fig, axes = plt.subplots(2, 2, figsize=(15, 10.8), constrained_layout=True)
+    rows, columns = subplot_grid(len(test_ri))
+    fig, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(7.5 * columns, 5.4 * rows),
+        constrained_layout=True,
+        squeeze=False,
+    )
 
     for ax, ri, actual_curve, predicted_curve in zip(
         axes.ravel(),
@@ -134,13 +151,16 @@ def save_peak_aligned_prediction():
         ax.set_title(f"RI = {ri:.4f}", fontsize=TITLE_SIZE, weight="bold")
         ax.set_xlabel("Wavelength (um)", fontsize=AXIS_LABEL_SIZE, weight="bold")
         ax.set_ylabel("CL (dB/cm)", fontsize=AXIS_LABEL_SIZE, weight="bold")
-        ax.set_xlim(0.6, 1.2)
+        ax.set_xlim(*visual_xlim(ri))
         ax.tick_params(axis="both", labelsize=TICK_LABEL_SIZE)
         for label in ax.get_xticklabels() + ax.get_yticklabels():
             label.set_fontweight("bold")
         legend = ax.legend(fontsize=LEGEND_SIZE, frameon=True)
         for text in legend.get_texts():
             text.set_fontweight("bold")
+
+    for ax in axes.ravel()[len(test_ri):]:
+        ax.set_visible(False)
 
     fig.savefig(
         OUT_DIR / "ML_peak_aligned_gpr_prediction.png",

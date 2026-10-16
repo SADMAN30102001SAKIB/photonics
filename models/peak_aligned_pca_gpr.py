@@ -17,10 +17,12 @@ from photonics.core import (
     predict_gpr,
     reconstruct_pca,
     regression_metrics,
+    subplot_grid,
+    visual_xlim,
 )
 
 COMPONENTS = 4
-ALIGNED_X = np.linspace(-0.35, 0.35, 141)
+ALIGNED_X = np.linspace(X_AXIS[0] - X_AXIS[-1], X_AXIS[-1] - X_AXIS[0], 241)
 
 
 def extract_peaks(y):
@@ -33,7 +35,13 @@ def extract_peaks(y):
 def align_curve(y_curve, peak_wavelength, peak_loss):
     shifted_x = X_AXIS - peak_wavelength
     normalized_y = y_curve / peak_loss
-    return np.interp(ALIGNED_X, shifted_x, normalized_y, left=0.0, right=0.0)
+    return np.interp(
+        ALIGNED_X,
+        shifted_x,
+        normalized_y,
+        left=normalized_y[0],
+        right=normalized_y[-1],
+    )
 
 
 def fit_peak_aligned_pca_gpr(train_ri, train_y):
@@ -81,13 +89,19 @@ def predict_peak_aligned_pca_gpr(model, test_ri):
         aligned_shapes,
     ):
         shifted_x = X_AXIS - wavelength
-        curve = np.interp(shifted_x, ALIGNED_X, aligned_shape, left=0.0, right=0.0)
+        curve = np.interp(
+            shifted_x,
+            ALIGNED_X,
+            aligned_shape,
+            left=aligned_shape[0],
+            right=aligned_shape[-1],
+        )
         predictions.append(np.maximum(curve * loss, 0.0))
 
     return np.array(predictions)
 
 
-def print_results(test_ri, actual, predicted, explained):
+def print_results(train_count, test_ri, actual, predicted, explained):
     overall_r2, overall_mae, overall_rmse = regression_metrics(actual, predicted)
     (
         peak_wavelength_error,
@@ -103,7 +117,7 @@ def print_results(test_ri, actual, predicted, explained):
 
     print("Peak-Aligned PCA + Gaussian Process Regression")
     print("=" * 58)
-    print("Training samples: 8")
+    print(f"Training samples: {train_count}")
     print(f"Testing samples:  {len(test_ri)}")
     print("Output points:    61")
     print(f"PCA components:   {len(explained)}")
@@ -158,7 +172,14 @@ def print_results(test_ri, actual, predicted, explained):
 
 def plot_predictions(test_ri, actual, predicted):
     plt.style.use("seaborn-v0_8-whitegrid")
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
+    rows, columns = subplot_grid(len(test_ri))
+    fig, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(5.8 * columns, 3.8 * rows),
+        constrained_layout=True,
+        squeeze=False,
+    )
 
     for ax, ri, actual_curve, predicted_curve in zip(
         axes.ravel(),
@@ -173,8 +194,11 @@ def plot_predictions(test_ri, actual, predicted):
         ax.set_title(f"RI = {ri:.4f}", fontsize=12, weight="bold")
         ax.set_xlabel("Wavelength")
         ax.set_ylabel("Confinement Loss")
-        ax.set_xlim(0.6, 1.2)
+        ax.set_xlim(*visual_xlim(ri))
         ax.legend()
+
+    for ax in axes.ravel()[len(test_ri):]:
+        ax.set_visible(False)
 
     fig.suptitle(
         "Peak-Aligned PCA + GPR: Actual vs Predicted", fontsize=16, weight="bold"
@@ -183,13 +207,13 @@ def plot_predictions(test_ri, actual, predicted):
 
 
 def main():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
+    train_ri, train_y = load_dataset(TRAINING_FILE, missing="interpolate")
+    test_ri, test_y = load_dataset(TESTING_FILE, missing="keep")
 
     model = fit_peak_aligned_pca_gpr(train_ri, train_y)
     predicted_y = predict_peak_aligned_pca_gpr(model, test_ri)
 
-    print_results(test_ri, test_y, predicted_y, model["explained"])
+    print_results(len(train_ri), test_ri, test_y, predicted_y, model["explained"])
     plot_predictions(test_ri, test_y, predicted_y)
 
 

@@ -15,8 +15,9 @@ from photonics.core import (
     peak_metrics,
     predict_gpr,
     regression_metrics,
+    subplot_grid,
+    visual_xlim,
 )
-
 
 COMPONENTS = 4
 
@@ -36,16 +37,23 @@ def reconstruct_pca(mean, basis, coefficients):
     return coefficients @ basis + mean
 
 
-def print_results(test_ri, actual, predicted, explained):
+def print_results(train_count, test_ri, actual, predicted, explained):
     overall_r2, overall_mae, overall_rmse = regression_metrics(actual, predicted)
-    peak_wavelength_error, peak_loss_error, actual_wl, predicted_wl, actual_loss, predicted_loss = peak_metrics(
+    (
+        peak_wavelength_error,
+        peak_loss_error,
+        actual_wl,
+        predicted_wl,
+        actual_loss,
+        predicted_loss,
+    ) = peak_metrics(
         actual,
         predicted,
     )
 
     print("PCA + Gaussian Process Regression")
     print("=" * 52)
-    print("Training samples: 8")
+    print(f"Training samples: {train_count}")
     print(f"Testing samples:  {len(test_ri)}")
     print("Output points:    61")
     print(f"PCA components:   {len(explained)}")
@@ -99,7 +107,14 @@ def print_results(test_ri, actual, predicted, explained):
 
 def plot_predictions(test_ri, actual, predicted):
     plt.style.use("seaborn-v0_8-whitegrid")
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
+    rows, columns = subplot_grid(len(test_ri))
+    fig, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(5.8 * columns, 3.8 * rows),
+        constrained_layout=True,
+        squeeze=False,
+    )
 
     for ax, ri, actual_curve, predicted_curve in zip(
         axes.ravel(),
@@ -108,27 +123,34 @@ def plot_predictions(test_ri, actual, predicted):
         predicted,
     ):
         ax.plot(X_AXIS, actual_curve, linewidth=2.2, label="Actual")
-        ax.plot(X_AXIS, predicted_curve, linewidth=2.2, linestyle="--", label="Predicted")
+        ax.plot(
+            X_AXIS, predicted_curve, linewidth=2.2, linestyle="--", label="Predicted"
+        )
         ax.set_title(f"RI = {ri:.4f}", fontsize=12, weight="bold")
         ax.set_xlabel("Wavelength")
         ax.set_ylabel("Confinement Loss")
-        ax.set_xlim(0.6, 1.2)
+        ax.set_xlim(*visual_xlim(ri))
         ax.legend()
 
-    fig.suptitle("PCA + GPR: Actual vs Predicted Testing Curves", fontsize=16, weight="bold")
+    for ax in axes.ravel()[len(test_ri):]:
+        ax.set_visible(False)
+
+    fig.suptitle(
+        "PCA + GPR: Actual vs Predicted Testing Curves", fontsize=16, weight="bold"
+    )
     plt.show()
 
 
 def main():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
+    train_ri, train_y = load_dataset(TRAINING_FILE, missing="interpolate")
+    test_ri, test_y = load_dataset(TESTING_FILE, missing="keep")
 
     pca_mean, pca_basis, train_coefficients, explained = fit_pca(train_y, COMPONENTS)
     gpr_model = fit_gpr(train_ri, train_coefficients)
     predicted_coefficients = predict_gpr(gpr_model, test_ri)
     predicted_y = reconstruct_pca(pca_mean, pca_basis, predicted_coefficients)
 
-    print_results(test_ri, test_y, predicted_y, explained)
+    print_results(len(train_ri), test_ri, test_y, predicted_y, explained)
     plot_predictions(test_ri, test_y, predicted_y)
 
 

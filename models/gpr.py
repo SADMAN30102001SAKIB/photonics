@@ -15,8 +15,8 @@ from photonics.core import (
 
 
 def main():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
+    train_ri, train_y = load_dataset(TRAINING_FILE, missing="interpolate")
+    test_ri, test_y = load_dataset(TESTING_FILE, missing="keep")
 
     model = fit_sklearn_gpr(train_ri, train_y)
     predicted_y = predict_sklearn_gpr(model, test_ri)
@@ -26,6 +26,7 @@ def main():
         test_ri,
         test_y,
         predicted_y,
+        train_count=len(train_ri),
         extra_lines=[
             f"Kernel:           {model['model'].kernel_}",
             f"Log likelihood:   {model['model'].log_marginal_likelihood_value_:.8f}",
