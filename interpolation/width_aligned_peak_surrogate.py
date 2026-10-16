@@ -13,6 +13,8 @@ from photonics.core import (
     load_dataset,
     peak_metrics,
     regression_metrics,
+    subplot_grid,
+    visual_xlim,
 )
 
 ALIGNED_X = np.linspace(-5.0, 5.0, 301)
@@ -169,7 +171,7 @@ def print_data_audit(train_ri, train_y, test_ri, test_y):
     print()
 
 
-def print_results(test_ri, actual, predicted):
+def print_results(train_count, test_ri, actual, predicted):
     overall_r2, overall_mae, overall_rmse = regression_metrics(actual, predicted)
     (
         peak_wavelength_error,
@@ -185,7 +187,7 @@ def print_results(test_ri, actual, predicted):
 
     print("Width-aligned peak surrogate model")
     print("=" * 52)
-    print("Training samples: 8")
+    print(f"Training samples: {train_count}")
     print(f"Testing samples:  {len(test_ri)}")
     print("Output points:    61")
     print(
@@ -234,7 +236,14 @@ def print_results(test_ri, actual, predicted):
 
 def plot_predictions(test_ri, actual, predicted):
     plt.style.use("seaborn-v0_8-whitegrid")
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
+    rows, columns = subplot_grid(len(test_ri))
+    fig, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(5.8 * columns, 3.8 * rows),
+        constrained_layout=True,
+        squeeze=False,
+    )
 
     for ax, ri, actual_curve, predicted_curve in zip(
         axes.ravel(),
@@ -249,8 +258,11 @@ def plot_predictions(test_ri, actual, predicted):
         ax.set_title(f"RI = {ri:.4f}", fontsize=12, weight="bold")
         ax.set_xlabel("Wavelength")
         ax.set_ylabel("Confinement Loss")
-        ax.set_xlim(0.6, 1.2)
+        ax.set_xlim(*visual_xlim(ri))
         ax.legend()
+
+    for ax in axes.ravel()[len(test_ri):]:
+        ax.set_visible(False)
 
     fig.suptitle(
         "Width-Aligned Peak Surrogate: Actual vs Predicted", fontsize=16, weight="bold"
@@ -259,12 +271,12 @@ def plot_predictions(test_ri, actual, predicted):
 
 
 def main():
-    train_ri, train_y = load_dataset(TRAINING_FILE, expected_rows=8)
-    test_ri, test_y = load_dataset(TESTING_FILE, expected_rows=4)
+    train_ri, train_y = load_dataset(TRAINING_FILE, missing="interpolate")
+    test_ri, test_y = load_dataset(TESTING_FILE, missing="keep")
 
     print_data_audit(train_ri, train_y, test_ri, test_y)
     predicted_y = predict_curves(train_ri, train_y, test_ri)
-    print_results(test_ri, test_y, predicted_y)
+    print_results(len(train_ri), test_ri, test_y, predicted_y)
     plot_predictions(test_ri, test_y, predicted_y)
 
 

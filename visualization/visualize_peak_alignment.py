@@ -15,7 +15,7 @@ def peak_info(curve):
 
 
 def main():
-    ri, y = load_dataset(TRAINING_FILE, expected_rows=8)
+    ri, y = load_dataset(TRAINING_FILE, missing="interpolate")
     selected = [5, 6, 7]
 
     plt.style.use("seaborn-v0_8-whitegrid")
@@ -39,7 +39,9 @@ def main():
         axes[1].scatter(0, peak_loss, s=45)
 
         normalized_y = curve / peak_loss
-        axes[2].plot(shifted_x, normalized_y, linewidth=2, label=f"RI = {ri[index]:.2f}")
+        axes[2].plot(
+            shifted_x, normalized_y, linewidth=2, label=f"RI = {ri[index]:.2f}"
+        )
         axes[2].scatter(0, 1, s=45)
 
     axes[0].set_title("1. Original Curves")

@@ -3,10 +3,16 @@ import sys
 import csv
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from photonics.core import TRAINING_FILE
+
+
+def parse_value(value):
+    value = value.strip()
+    return float(value) if value else np.nan
 
 
 def load_training_data(path):
@@ -14,14 +20,11 @@ def load_training_data(path):
         rows = list(csv.DictReader(file))
 
     y_columns = [f"y_{index:02d}" for index in range(1, 62)]
-    return [
-        (row["ri"], [float(row[column]) for column in y_columns])
-        for row in rows
-    ]
+    return [(row["ri"], [parse_value(row[column]) for column in y_columns]) for row in rows]
 
 
 def main():
-    x_values = [0.6 + index * 0.01 for index in range(61)]
+    x_values = [0.4 + index * 0.01 for index in range(61)]
     curves = load_training_data(TRAINING_FILE)
 
     plt.style.use("seaborn-v0_8-whitegrid")
@@ -33,7 +36,7 @@ def main():
     ax.set_title("Training Dataset Confinement Loss Curves", fontsize=16, weight="bold")
     ax.set_xlabel("Wavelength")
     ax.set_ylabel("Confinement Loss")
-    ax.set_xlim(0.6, 1.2)
+    ax.set_xlim(0.4, 1.0)
     ax.legend(title="Refractive Index", ncols=2, frameon=True)
 
     plt.show()

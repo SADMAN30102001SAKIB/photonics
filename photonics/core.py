@@ -5,14 +5,26 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import ConstantKernel, RBF, WhiteKernel
 
-
 ROOT = Path(__file__).resolve().parent.parent
 TRAINING_FILE = ROOT / "dataset" / "training_clean.csv"
 TESTING_FILE = ROOT / "dataset" / "testing_clean.csv"
-X_AXIS = np.linspace(0.6, 1.2, 61)
+X_AXIS = np.linspace(0.4, 1.0, 61)
 
 
-def load_dataset(path, expected_rows=None):
+def interpolate_missing_row(values):
+    values = np.array(values, dtype=float)
+    valid = np.isfinite(values)
+
+    if valid.all():
+        return values
+    if not valid.any():
+        raise ValueError("Cannot interpolate a row with no numeric y-values.")
+
+    x_index = np.arange(len(values))
+    return np.interp(x_index, x_index[valid], values[valid])
+
+
+def load_dataset(path, expected_rows=None, missing="error"):
     y_columns = [f"y_{index:02d}" for index in range(1, 62)]
 
     with path.open(newline="", encoding="utf-8") as file:
@@ -28,13 +40,28 @@ def load_dataset(path, expected_rows=None):
         )
 
     ri = np.array([float(row["ri"]) for row in rows], dtype=float)
-    y = np.array(
-        [[float(row[column]) for column in y_columns] for row in rows],
-        dtype=float,
-    )
+    y_rows = []
+    for row in rows:
+        values = [
+            float(row[column]) if row[column].strip() else np.nan
+            for column in y_columns
+        ]
+        if missing == "interpolate":
+            values = interpolate_missing_row(values)
+        elif missing == "keep":
+            values = np.array(values, dtype=float)
+        elif missing == "error":
+            values = np.array(values, dtype=float)
+            if not np.isfinite(values).all():
+                raise ValueError(f"{path.name} contains missing values.")
+        else:
+            raise ValueError("missing must be 'error', 'interpolate', or 'keep'.")
+        y_rows.append(values)
 
-    if not np.isfinite(ri).all() or not np.isfinite(y).all():
-        raise ValueError(f"{path.name} contains missing or non-numeric values.")
+    y = np.array(y_rows, dtype=float)
+
+    if not np.isfinite(ri).all():
+        raise ValueError(f"{path.name} contains missing or non-numeric RI values.")
 
     return ri, y
 
@@ -110,11 +137,9 @@ def fit_sklearn_gpr(x_train, y_train):
     x_mean = x_train.mean()
     x_std = x_train.std()
     x_scaled = ((x_train - x_mean) / x_std).reshape(-1, 1)
-    kernel = (
-        ConstantKernel(1.0, (1e-3, 1e3))
-        * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2))
-        + WhiteKernel(noise_level=1e-8, noise_level_bounds=(1e-10, 1e-3))
-    )
+    kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(
+        length_scale=1.0, length_scale_bounds=(1e-2, 1e2)
+    ) + WhiteKernel(noise_level=1e-8, noise_level_bounds=(1e-10, 1e-3))
     model = GaussianProcessRegressor(
         kernel=kernel,
         normalize_y=True,
@@ -131,23 +156,56 @@ def predict_sklearn_gpr(model, x_test):
 
 
 def regression_metrics(actual, predicted):
+    mask = np.isfinite(actual) & np.isfinite(predicted)
+    actual = actual[mask]
+    predicted = predicted[mask]
+
+    if len(actual) == 0:
+        return np.nan, np.nan, np.nan
+
     errors = predicted - actual
     mae = np.mean(np.abs(errors))
     rmse = np.sqrt(np.mean(errors**2))
     ss_res = np.sum(errors**2)
     ss_tot = np.sum((actual - actual.mean()) ** 2)
-    r2 = 1 - ss_res / ss_tot
+    r2 = np.nan if ss_tot == 0 else 1 - ss_res / ss_tot
     return r2, mae, rmse
 
 
 def peak_metrics(actual, predicted):
-    actual_peak_index = np.argmax(actual, axis=1)
-    predicted_peak_index = np.argmax(predicted, axis=1)
+    actual_peak_index = np.array(
+        [
+            np.nanargmax(row) if np.isfinite(row).any() else -1
+            for row in actual
+        ]
+    )
+    predicted_peak_index = np.array(
+        [
+            np.nanargmax(row) if np.isfinite(row).any() else -1
+            for row in predicted
+        ]
+    )
 
-    actual_peak_wavelength = X_AXIS[actual_peak_index]
-    predicted_peak_wavelength = X_AXIS[predicted_peak_index]
-    actual_peak_loss = actual[np.arange(len(actual)), actual_peak_index]
-    predicted_peak_loss = predicted[np.arange(len(predicted)), predicted_peak_index]
+    actual_peak_wavelength = np.full(len(actual), np.nan)
+    valid_actual_peak = actual_peak_index >= 0
+    actual_peak_wavelength[valid_actual_peak] = X_AXIS[
+        actual_peak_index[valid_actual_peak]
+    ]
+    predicted_peak_wavelength = np.full(len(predicted), np.nan)
+    valid_predicted_peak = predicted_peak_index >= 0
+    predicted_peak_wavelength[valid_predicted_peak] = X_AXIS[
+        predicted_peak_index[valid_predicted_peak]
+    ]
+    actual_peak_loss = np.full(len(actual), np.nan)
+    actual_peak_loss[valid_actual_peak] = actual[
+        np.arange(len(actual))[valid_actual_peak],
+        actual_peak_index[valid_actual_peak],
+    ]
+    predicted_peak_loss = np.full(len(predicted), np.nan)
+    predicted_peak_loss[valid_predicted_peak] = predicted[
+        np.arange(len(predicted))[valid_predicted_peak],
+        predicted_peak_index[valid_predicted_peak],
+    ]
 
     return (
         np.abs(predicted_peak_wavelength - actual_peak_wavelength),
@@ -211,7 +269,10 @@ def predict_natural_cubic_spline(model, x_test):
         y_value = (
             a * y_train[index]
             + b * y_train[index + 1]
-            + ((a**3 - a) * second_derivatives[index] + (b**3 - b) * second_derivatives[index + 1])
+            + (
+                (a**3 - a) * second_derivatives[index]
+                + (b**3 - b) * second_derivatives[index + 1]
+            )
             * (width**2)
             / 6
         )
@@ -282,16 +343,26 @@ def predict_pchip(model, x_test):
     return np.array(predictions)
 
 
-def print_standard_results(title, test_ri, actual, predicted, extra_lines=None):
+def print_standard_results(
+    title, test_ri, actual, predicted, train_count=None, extra_lines=None
+):
     overall_r2, overall_mae, overall_rmse = regression_metrics(actual, predicted)
-    peak_wavelength_error, peak_loss_error, actual_wl, predicted_wl, actual_loss, predicted_loss = peak_metrics(
+    (
+        peak_wavelength_error,
+        peak_loss_error,
+        actual_wl,
+        predicted_wl,
+        actual_loss,
+        predicted_loss,
+    ) = peak_metrics(
         actual,
         predicted,
     )
 
     print(title)
     print("=" * max(52, len(title)))
-    print("Training samples: 8")
+    if train_count is not None:
+        print(f"Training samples: {train_count}")
     print(f"Testing samples:  {len(test_ri)}")
     print("Output points:    61")
     if extra_lines:
@@ -339,11 +410,28 @@ def print_standard_results(title, test_ri, actual, predicted, extra_lines=None):
         )
 
 
+def subplot_grid(item_count):
+    columns = min(3, max(1, int(np.ceil(np.sqrt(item_count)))))
+    rows = int(np.ceil(item_count / columns))
+    return rows, columns
+
+
+def visual_xlim(ri):
+    return 0.4, 1.0
+
+
 def plot_predictions(title, test_ri, actual, predicted):
     import matplotlib.pyplot as plt
 
     plt.style.use("seaborn-v0_8-whitegrid")
-    fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
+    rows, columns = subplot_grid(len(test_ri))
+    fig, axes = plt.subplots(
+        rows,
+        columns,
+        figsize=(5.8 * columns, 3.8 * rows),
+        constrained_layout=True,
+        squeeze=False,
+    )
 
     for ax, ri, actual_curve, predicted_curve in zip(
         axes.ravel(),
@@ -352,12 +440,17 @@ def plot_predictions(title, test_ri, actual, predicted):
         predicted,
     ):
         ax.plot(X_AXIS, actual_curve, linewidth=2.2, label="Actual")
-        ax.plot(X_AXIS, predicted_curve, linewidth=2.2, linestyle="--", label="Predicted")
+        ax.plot(
+            X_AXIS, predicted_curve, linewidth=2.2, linestyle="--", label="Predicted"
+        )
         ax.set_title(f"RI = {ri:.4f}", fontsize=12, weight="bold")
         ax.set_xlabel("Wavelength")
         ax.set_ylabel("Confinement Loss")
-        ax.set_xlim(0.6, 1.2)
+        ax.set_xlim(*visual_xlim(ri))
         ax.legend()
+
+    for ax in axes.ravel()[len(test_ri):]:
+        ax.set_visible(False)
 
     fig.suptitle(title, fontsize=16, weight="bold")
     plt.show()
